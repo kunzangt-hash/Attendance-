@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Verified Attendance</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: #1a73e8; }
+        .info { background: #eef5ff; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 14px; }
+        select, button { width: 100%; padding: 15px; margin-top: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
+        button { background: #1a73e8; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #status { text-align: center; margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Field Check-In</h2>
+    <p class="info" id="gpsStatus">Checking GPS... Please allow location access.</p>
+    
+    <label>Your Name:</label>
+    <select id="engName" onchange="updateLoc()">
+        <option value="" disabled selected>-- Select --</option>
+        <option value="Karun" data-loc="Khotokha">Karun</option>
+        <option value="Sanjit" data-loc="Gyalpoizhing">Sanjit</option>
+        <option value="Shekhar" data-loc="Pemathang">Shekhar</option>
+        <option value="Sujata" data-loc="Jamtsholing">Sujata</option>
+    </select>
+
+    <p>Site: <strong id="locDisplay">-</strong></p>
+    
+    <button id="submitBtn" onclick="submitAttendance()" disabled>Wait for GPS...</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    const scriptURL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+    let userCoords = { lat: null, lng: null };
+
+    // Automatically ask for GPS on load
+    window.onload = function() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userCoords.lat = position.coords.latitude;
+                    userCoords.lng = position.coords.longitude;
+                    document.getElementById('gpsStatus').innerText = "✅ GPS Signal Acquired";
+                    document.getElementById('gpsStatus').style.color = "green";
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('submitBtn').innerText = "Submit Attendance";
+                },
+                (error) => {
+                    document.getElementById('gpsStatus').innerText = "❌ Error: Please enable GPS/Location";
+                    document.getElementById('gpsStatus').style.color = "red";
+                }
+            );
+        }
+    };
+
+    function updateLoc() {
+        const select = document.getElementById('engName');
+        document.getElementById('locDisplay').innerText = select.options[select.selectedIndex].getAttribute('data-loc');
+    }
+
+    async function submitAttendance() {
+        const name = document.getElementById('engName').value;
+        const loc = document.getElementById('locDisplay').innerText;
+        const status = document.getElementById('status');
+        
+        if(!name) return alert("Select your name");
+
+        status.innerText = "Uploading data...";
+        
+        try {
+            await fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ name, loc, lat: userCoords.lat, lng: userCoords.lng })
+            });
+            status.innerHTML = "✅ Success! Attendance saved with GPS.";
+            status.style.color = "green";
+        } catch (e) {
+            status.innerText = "Submission Failed.";
+            status.style.color = "red";
+        }
+    }
+</script>
+
+</body>
+</html>
